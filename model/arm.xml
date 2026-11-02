@@ -1,0 +1,84 @@
+<!-- 4-DOF manipulator (yaw + 3 pitch joints) with a parallel-jaw gripper and a box to pick. -->
+<mujoco model="energy_optimal_pick">
+  <compiler angle="radian" autolimits="true"/>
+  <option timestep="0.002" gravity="0 0 -9.81" integrator="implicitfast" cone="elliptic"/>
+
+  <default>
+    <joint damping="0.5" armature="0.01"/>
+    <geom friction="1.0 0.005 0.0001" condim="4"/>
+    <default class="finger">
+      <joint type="slide" damping="5" armature="0.001"/>
+      <geom type="box" size="0.012 0.006 0.03" rgba="0.2 0.2 0.25 1" mass="0.05"/>
+    </default>
+  </default>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.35 0.45 0.6" rgb2="0.05 0.05 0.1" width="512" height="512"/>
+    <texture name="grid" type="2d" builtin="checker" rgb1="0.82 0.85 0.88" rgb2="0.72 0.75 0.78" width="512" height="512"/>
+    <material name="grid" texture="grid" texrepeat="8 8"/>
+    <material name="link" rgba="0.95 0.55 0.15 1"/>
+    <material name="dark" rgba="0.25 0.25 0.3 1"/>
+  </asset>
+
+  <visual>
+    <global offwidth="960" offheight="720"/>
+  </visual>
+
+  <worldbody>
+    <light pos="0.3 -0.5 1.5" dir="-0.2 0.3 -1" diffuse="0.8 0.8 0.8"/>
+    <geom name="floor" type="plane" size="1 1 0.05" material="grid"/>
+
+    <body name="base">
+      <geom type="cylinder" size="0.07 0.05" pos="0 0 0.05" material="dark" mass="3"/>
+      <body name="turret" pos="0 0 0.1">
+        <joint name="j1_yaw" axis="0 0 1" range="-3.14 3.14"/>
+        <geom type="cylinder" size="0.045 0.1" pos="0 0 0.1" material="link" mass="1.0"/>
+
+        <body name="upper_arm" pos="0 0 0.2">
+          <joint name="j2_shoulder" axis="0 1 0" range="-1.8 1.8"/>
+          <geom type="capsule" fromto="0 0 0 0 0 0.30" size="0.03" material="link" mass="1.0"/>
+
+          <body name="forearm" pos="0 0 0.30">
+            <joint name="j3_elbow" axis="0 1 0" range="-2.6 2.6"/>
+            <geom type="capsule" fromto="0 0 0 0 0 0.25" size="0.025" material="link" mass="0.6"/>
+
+            <body name="wrist" pos="0 0 0.25">
+              <joint name="j4_wrist" axis="0 1 0" range="-2.6 2.6"/>
+              <geom type="capsule" fromto="0 0 0 0 0 0.06" size="0.02" material="dark" mass="0.2"/>
+
+              <body name="palm" pos="0 0 0.08">
+                <geom type="box" size="0.02 0.06 0.01" material="dark" mass="0.15"/>
+                <!-- Tool centre point, between the fingertips. Its local +z is the approach axis. -->
+                <site name="tcp" pos="0 0 0.04" size="0.006" rgba="0 1 0 1"/>
+                <body name="finger_left" pos="0 0.05 0.04">
+                  <joint name="finger_left" class="finger" axis="0 -1 0" range="0 0.045"/>
+                  <geom class="finger"/>
+                </body>
+                <body name="finger_right" pos="0 -0.05 0.04">
+                  <joint name="finger_right" class="finger" axis="0 1 0" range="0 0.045"/>
+                  <geom class="finger"/>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+
+    <body name="object" pos="0.35 0.15 0.025">
+      <freejoint name="object"/>
+      <geom name="object" type="box" size="0.02 0.02 0.025" rgba="0.15 0.55 0.9 1" mass="0.15"/>
+    </body>
+  </worldbody>
+
+  <actuator>
+    <!-- Arm: torque-controlled joints (limits in N·m). -->
+    <motor name="m1_yaw"      joint="j1_yaw"      ctrlrange="-20 20"/>
+    <motor name="m2_shoulder" joint="j2_shoulder" ctrlrange="-40 40"/>
+    <motor name="m3_elbow"    joint="j3_elbow"    ctrlrange="-25 25"/>
+    <motor name="m4_wrist"    joint="j4_wrist"    ctrlrange="-10 10"/>
+    <!-- Gripper: position-controlled fingers with a grip-force cap. -->
+    <position name="finger_left"  joint="finger_left"  kp="400" ctrlrange="0 0.045" forcerange="-12 12"/>
+    <position name="finger_right" joint="finger_right" kp="400" ctrlrange="0 0.045" forcerange="-12 12"/>
+  </actuator>
+</mujoco>
